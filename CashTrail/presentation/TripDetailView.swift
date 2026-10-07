@@ -5,7 +5,8 @@ struct TripDetailView: View {
     @Bindable var trip: Trip
     @Environment(\.modelContext) private var modelContext
     @State private var showingScanner = false
-    @State private var showingEditTrip = false
+    @State private var showingManualEntry = false
+    @State private var showingEditJar = false
 
     private var sortedReceipts: [Receipt] {
         trip.receipts.sorted { $0.date > $1.date }
@@ -39,23 +40,35 @@ struct TripDetailView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    showingEditTrip = true
+                    showingEditJar = true
                 } label: {
-                    Label("Edit Trip", systemImage: "slider.horizontal.3")
+                    Label("Edit Jar", systemImage: "slider.horizontal.3")
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showingScanner = true
+                Menu {
+                    Button {
+                        showingScanner = true
+                    } label: {
+                        Label("Scan Receipt", systemImage: "camera.viewfinder")
+                    }
+                    Button {
+                        showingManualEntry = true
+                    } label: {
+                        Label("Enter Manually", systemImage: "square.and.pencil")
+                    }
                 } label: {
-                    Label("Scan Receipt", systemImage: "camera.viewfinder")
+                    Label("Add Expense", systemImage: "plus")
                 }
             }
         }
         .sheet(isPresented: $showingScanner) {
             ScanReceiptView(trip: trip)
         }
-        .sheet(isPresented: $showingEditTrip) {
+        .sheet(isPresented: $showingManualEntry) {
+            AddManualExpenseView(trip: trip)
+        }
+        .sheet(isPresented: $showingEditJar) {
             EditTripView(trip: trip)
         }
         .overlay {
@@ -63,7 +76,7 @@ struct TripDetailView: View {
                 ContentUnavailableView(
                     "No Receipts",
                     systemImage: "receipt",
-                    description: Text("Tap the camera icon to scan your first receipt.")
+                    description: Text("Tap + to scan or add your first expense.")
                 )
             }
         }
@@ -95,3 +108,4 @@ struct ReceiptRowView: View {
         }
     }
 }
+

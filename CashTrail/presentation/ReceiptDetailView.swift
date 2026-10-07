@@ -3,6 +3,11 @@ import SwiftData
 
 struct ReceiptDetailView: View {
     @Bindable var receipt: Receipt
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case merchant, amount, notes
+    }
 
     private var currencyCode: String {
         receipt.trip?.currencyCode ?? Trip.defaultCurrencyCode
@@ -20,6 +25,7 @@ struct ReceiptDetailView: View {
 
             Section("Details") {
                 TextField("Merchant", text: $receipt.merchant)
+                    .focused($focusedField, equals: .merchant)
                 HStack {
                     Text("Amount")
                     Spacer()
@@ -30,8 +36,30 @@ struct ReceiptDetailView: View {
                     )
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
+                    .focused($focusedField, equals: .amount)
                 }
                 DatePicker("Date", selection: $receipt.date, displayedComponents: .date)
+            }
+
+            if receipt.wasConverted,
+               let originalAmount = receipt.originalAmount,
+               let originalCurrencyCode = receipt.originalCurrencyCode {
+                Section("Original Amount") {
+                    HStack {
+                        Text("Entered as")
+                        Spacer()
+                        Text(originalAmount.formatted(.currency(code: originalCurrencyCode)))
+                            .foregroundStyle(.secondary)
+                    }
+                    if let rate = receipt.exchangeRate {
+                        HStack {
+                            Text("Rate used")
+                            Spacer()
+                            Text("1 \(originalCurrencyCode) ≈ \(rate.formatted()) \(currencyCode)")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
             }
 
             Section("Notes") {
@@ -43,6 +71,7 @@ struct ReceiptDetailView: View {
                     ),
                     axis: .vertical
                 )
+                .focused($focusedField, equals: .notes)
             }
 
             if !receipt.rawOCRText.isEmpty {
@@ -53,6 +82,7 @@ struct ReceiptDetailView: View {
                 }
             }
         }
+        .interactiveKeyboardDismissal { focusedField = nil }
         .navigationTitle(receipt.merchant)
         .navigationBarTitleDisplayMode(.inline)
     }

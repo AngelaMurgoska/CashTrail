@@ -16,7 +16,7 @@ struct TripListView: View {
                 }
                 .onDelete(perform: deleteTrips)
             }
-            .navigationTitle("Trips")
+            .navigationTitle("Overview")
             .navigationDestination(for: Trip.self) { trip in
                 TripDetailView(trip: trip)
             }
@@ -82,12 +82,18 @@ struct AddTripView: View {
     @State private var notes = ""
     @State private var currencyCode = Trip.defaultCurrencyCode
     @State private var showingCurrencyPicker = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case name, notes
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Trip Info") {
                     TextField("Trip Name", text: $name)
+                        .focused($focusedField, equals: .name)
                     DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
                     Toggle("Has End Date", isOn: $hasEndDate)
                     if hasEndDate {
@@ -109,8 +115,10 @@ struct AddTripView: View {
                 }
                 Section("Notes") {
                     TextField("Optional notes", text: $notes, axis: .vertical)
+                        .focused($focusedField, equals: .notes)
                 }
             }
+            .interactiveKeyboardDismissal { focusedField = nil }
             .navigationTitle("New Trip")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -137,4 +145,3 @@ struct AddTripView: View {
         }
     }
 }
-

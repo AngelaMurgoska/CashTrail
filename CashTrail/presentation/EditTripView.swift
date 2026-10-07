@@ -5,12 +5,18 @@ struct EditTripView: View {
     @Bindable var trip: Trip
     @Environment(\.dismiss) private var dismiss
     @State private var showingCurrencyPicker = false
+    @FocusState private var focusedField: Field?
+
+    private enum Field {
+        case name, notes
+    }
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Trip Info") {
                     TextField("Trip Name", text: $trip.name)
+                        .focused($focusedField, equals: .name)
                     DatePicker("Start Date", selection: $trip.startDate, displayedComponents: .date)
                 }
 
@@ -41,8 +47,10 @@ struct EditTripView: View {
                         ),
                         axis: .vertical
                     )
+                    .focused($focusedField, equals: .notes)
                 }
             }
+            .interactiveKeyboardDismissal { focusedField = nil }
             .navigationTitle("Edit Trip")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

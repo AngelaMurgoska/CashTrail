@@ -10,9 +10,13 @@ struct ScanReceiptView: View {
     @State private var capturedImage: UIImage?
     @State private var merchant = ""
     @State private var amountText = ""
+    @State private var currencyCode = ""
+    @State private var convertedAmountText = ""
+    @State private var exchangeRate: Decimal?
     @State private var date = Date()
     @State private var rawText = ""
     @State private var errorMessage: String?
+    @FocusState private var focusedField: EntryField?
 
     enum Stage {
         case scanning, processing, review
@@ -45,12 +49,25 @@ struct ScanReceiptView: View {
                         Button("Save") { saveReceipt() }
                             .disabled(
                                 merchant.trimmingCharacters(in: .whitespaces).isEmpty
-                                || Decimal(string: amountText) == nil
+                                || finalAmount == nil
                             )
                     }
                 }
             }
         }
+    }
+
+    private var needsConversion: Bool {
+        currencyCode.uppercased() != trip.currencyCode.uppercased()
+    }
+
+    private var enteredAmount: Decimal? {
+        Decimal(string: amountText, locale: .current)
+    }
+
+    /// The amount that will actually be saved, always in the trip's currency.
+    private var finalAmount: Decimal? {
+        needsConversion ? Decimal(string: convertedAmountText, locale: .current) : enteredAmount
     }
 
     private var reviewForm: some View {
@@ -65,15 +82,15 @@ struct ScanReceiptView: View {
             }
             Section("Details") {
                 TextField("Merchant", text: $merchant)
-                HStack {
-                    Text("Amount")
-                    Spacer()
-                    TextField("0.00", text: $amountText)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                    Text(trip.currencyCode)
-                        .foregroundStyle(.secondary)
-                }
+                    .focused($focusedField, equals: .merchant)
+                CurrencyAmountField(
+                    tripCurrencyCode: trip.currencyCode,
+                    amountText: $amountText,
+                    currencyCode: $currencyCode,
+                    convertedAmountText: $convertedAmountText,
+                    exchangeRate: $exchangeRate,
+                    focusedField: $focusedField
+                )
                 DatePicker("Date", selection: $date, displayedComponents: .date)
             }
             if let errorMessage {
@@ -84,6 +101,7 @@ struct ScanReceiptView: View {
                 }
             }
         }
+        .interactiveKeyboardDismissal { focusedField = nil }
     }
 
     private func handleScan(_ image: UIImage) {
@@ -106,13 +124,18 @@ struct ScanReceiptView: View {
                     merchant = ""
                     amountText = ""
                 }
+                // OCR has no way to know the receipt's currency, so this assumes
+                // it matches the trip's — change the currency in the review
+                // screen below if the receipt was actually in a different one.
+                currencyCode = trip.currencyCode
+                convertedAmountText = amountText
                 stage = .review
             }
         }
     }
 
     private func saveReceipt() {
-        guard let amount = Decimal(string: amountText) else { return }
+        guard let amount = finalAmount else { return }
         let imageData = capturedImage?.jpegData(compressionQuality: 0.7)
         let receipt = Receipt(
             merchant: merchant.trimmingCharacters(in: .whitespaces),
@@ -120,6 +143,9 @@ struct ScanReceiptView: View {
             date: date,
             rawOCRText: rawText,
             imageData: imageData,
+            originalAmount: needsConversion ? enteredAmount : nil,
+            originalCurrencyCode: needsConversion ? currencyCode : nil,
+            exchangeRate: needsConversion ? exchangeRate : nil,
             trip: trip
         )
         modelContext.insert(receipt)
