@@ -5,6 +5,7 @@ struct TripListView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Trip.startDate, order: .reverse) private var trips: [Trip]
     @State private var showingAddTrip = false
+    @State private var showingReminders = false
 
     var body: some View {
         NavigationStack {
@@ -21,6 +22,13 @@ struct TripListView: View {
                 TripDetailView(trip: trip)
             }
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        showingReminders = true
+                    } label: {
+                        Label("Reminders", systemImage: "bell")
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
                         showingAddTrip = true
@@ -31,6 +39,9 @@ struct TripListView: View {
             }
             .sheet(isPresented: $showingAddTrip) {
                 AddTripView()
+            }
+            .sheet(isPresented: $showingReminders) {
+                RemindersView()
             }
             .overlay {
                 if trips.isEmpty {
@@ -55,17 +66,34 @@ struct TripRowView: View {
     let trip: Trip
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(trip.name)
-                .font(.headline)
-            HStack {
-                Text(trip.startDate, style: .date)
-                Spacer()
-                Text(trip.formattedAmount(trip.totalAmount))
-                    .fontWeight(.semibold)
+        HStack(spacing: 14) {
+            Image(systemName: "airplane")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Color.brandAccent)
+                .frame(width: 44, height: 44)
+                .background(
+                    Color.brandAccent.opacity(0.14),
+                    in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+                )
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(trip.name)
+                    .font(.headline)
+                Text(trip.dateRangeText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(trip.formattedAmount(trip.totalAmount))
+                    .font(.system(.headline, design: .rounded))
+                    .monospacedDigit()
+                Text(trip.receiptCountText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -145,3 +173,4 @@ struct AddTripView: View {
         }
     }
 }
+
